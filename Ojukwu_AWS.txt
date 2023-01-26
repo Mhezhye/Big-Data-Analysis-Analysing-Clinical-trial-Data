@@ -1,0 +1,123 @@
+--Question 1
+SELECT DISTINCT COUNT(*) 
+FROM clinicaltrial_2021
+WHERE Id LIKE 'N%';
+
+--Question 2
+SELECT Type, count(*) AS Total
+FROM clinicaltrial_2021
+GROUP BY Type
+ORDER BY Total DESC
+LIMIT 4
+
+--Question 3
+CREATE VIEW Split_Conditions AS
+SELECT Id, Most_Conditions
+FROM clinicaltrial_2021
+CROSS JOIN UNNEST(SPLIT(clinicaltrial_2021.conditions, ',')) AS t(Most_Conditions)
+WHERE Most_Conditions !=''
+
+--use this to check view
+SELECT * FROM Split_Conditions
+
+SELECT Most_Conditions, count(*) AS Total
+FROM Split_Conditions
+GROUP BY Most_Conditions
+ORDER BY Total DESC 
+LIMIT 5
+
+--Question 4
+SELECT SUBSTR(mesh.tree,1,3) AS Roots, count(*) AS frequency
+FROM mesh
+JOIN Split_Conditions
+ON Split_Conditions.Most_Conditions=mesh.term
+GROUP BY SUBSTR(mesh.tree,1,3)
+ORDER BY Frequency DESC
+LIMIT 5
+
+--Question 5
+SELECT clinicaltrial_2021.sponsor, count(*) AS frequency
+FROM clinicaltrial_2021
+WHERE sponsor NOT IN( SELECT Parent_Company FROM Pharma)
+GROUP BY clinicaltrial_2021.sponsor
+ORDER BY Frequency DESC
+LIMIT 10
+
+--Question 6
+CREATE VIEW Complete AS
+SELECT *
+FROM clinicaltrial_2021
+WHERE status ='Completed'
+
+SELECT SUBSTRING(completion, 1, 3) AS Completion, COUNT(*) AS Frequency
+FROM Complete
+WHERE SUBSTRING(completion,5, 8) like '2021'
+GROUP BY completion
+ORDER BY date_parse(completion, '%b')
+
+--Additional Analysis 1
+SELECT sponsor, count(*) AS frequency
+FROM clinicaltrial_2021
+GROUP BY sponsor
+ORDER BY frequency DESC
+LIMIT 10
+
+--Additional Analysis 2
+SELECT Parent_Company, count(*) AS Total
+FROM pharma
+GROUP BY Parent_Company
+ORDER BY Total DESC
+Limit 5
+
+--Additional Analysis
+SELECT Offense_Group, count(*) AS Total
+FROM pharma
+GROUP BY Offense_Group
+ORDER BY Total DESC
+
+--Create Pharma Table
+CREATE TABLE IF NOT EXISTS `clinicaltrial`.`pharma` (
+`company` string,
+`parent_company` string,
+`penalty_amount` string,
+`subtraction_from_penalty` string,
+`penalty_amount_adjusted_for_eliminating_multiple_counting` string,
+`penalty_year` string,
+`penalty_date` string,
+`offense_group` string,
+`primary_offense` string,
+`secondary_offense` string,
+`description` string,
+`level_of_government` string,
+`action_type` string,
+`agency` string,
+`civil_criminal` string,
+`prosecution_agreement` string,
+`court` string,
+`case_id` string,
+`private_litigation_case_title` string,
+`lawsuit_resolution` string,
+`facility_state` string,
+`city` string,
+`address` string,
+`zip` string,
+`naics_code` string,
+`naics_translation` string,
+`hq_country_of_parent` string,
+`hq_state_of_parent` string,
+`ownership_structure` string,
+`parent_company_stock_ticker` string,
+`major_industry_of_parent` string,
+`specific_industry_of_parent` string,
+`info_source` string,
+`notes` string
+)
+ROW FORMAT SERDE
+'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+'separatorChar' = ',',
+'quoteChar' = '\"',
+'escapeChar' = '\\'
+)
+LOCATION 's3://mezie/pharma/'
+TBLPROPERTIES ('has_encryted'='false', 'skip.header.line.count'='1');
